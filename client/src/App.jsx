@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import './App.css';
 
-const apiHost =
-  import.meta.env.VITE_API_URL ||
-  `${window.location.protocol}//${window.location.hostname || 'localhost'}:4000`;
-const API_URL = apiHost.replace(/\/$/, '');
-const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+const isDev = import.meta.env.DEV;
+const API_URL =
+  (import.meta.env.VITE_API_URL &&
+    import.meta.env.VITE_API_URL.replace(/\/$/, '')) ||
+  (isDev ? 'http://localhost:4000' : '');
+
 
 function VideoTile({ name, stream, isLocal, x, y, onPointerDown }) {
   return (
@@ -217,8 +218,8 @@ function App() {
   // Socket connection lifecycle
   useEffect(() => {
     if (stage !== 'room' || !joinPayloadRef.current) return;
-    const socket = io(API_URL, { transports: ['websocket'] });
-    socketRef.current = socket;
+      const socket = io(API_URL || undefined, { transports: ['websocket'] });
+  socketRef.current = socket;
 
     socket.on('connect', () => {
       socket.emit('join-room', joinPayloadRef.current);
