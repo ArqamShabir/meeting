@@ -2,11 +2,22 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import './App.css';
 
-const apiHost =
-  import.meta.env.VITE_API_URL ||
-  `${window.location.protocol}//${window.location.hostname || 'localhost'}:4000`;
-const API_URL = apiHost.replace(/\/$/, '');
-const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  {
+    urls: 'turn:meeting.multishells.com:3478',
+    username: 'webrtcuser',
+    credential: '12345multi?LM',
+  },
+];
+
+const isDev = import.meta.env.DEV;
+const API_URL =
+  (import.meta.env.VITE_API_URL &&
+    import.meta.env.VITE_API_URL.replace(/\/$/, '')) ||
+  (isDev ? 'http://localhost:4000' : 'https://meeting.multishells.com');
+
 
 function VideoTile({ name, stream, isLocal, x, y, onPointerDown }) {
   return (
@@ -217,8 +228,8 @@ function App() {
   // Socket connection lifecycle
   useEffect(() => {
     if (stage !== 'room' || !joinPayloadRef.current) return;
-    const socket = io(API_URL, { transports: ['websocket'] });
-    socketRef.current = socket;
+      const socket = io(API_URL || undefined, { transports: ['websocket'] });
+  socketRef.current = socket;
 
     socket.on('connect', () => {
       socket.emit('join-room', joinPayloadRef.current);
@@ -238,9 +249,24 @@ function App() {
         .forEach((p) => initiateConnection(p.id));
     });
 
-    socket.on('participant-joined', (participant) => {
-      setParticipants((prev) => [...prev, participant]);
-    });
+ socket.on('participant-joined', (participant) => {
+  console.log('[room] participant-joined', participant);
+
+  setParticipants((prev) => {
+    const exists = prev.some((p) => p.id === participant.id);
+    if (exists) {
+      return prev.map((p) => (p.id === participant.id ? participant : p));
+    }
+    return [...prev, participant];
+  });
+
+  // IMPORTANT:
+  // Do NOT call initiateConnection here.
+  // The person who just joined will create offers
+  // to everyone inside their 'room-joined' handler.
+});
+
+
 
     socket.on('participant-left', ({ participantId }) => {
       setParticipants((prev) => prev.filter((p) => p.id !== participantId));
@@ -253,26 +279,57 @@ function App() {
       );
     });
 
-    socket.on('signal', async ({ from, data }) => {
-      let pc = peersRef.current.get(from);
-      if (!pc) {
-        pc = createPeerConnection(from);
-      }
-      if (data.sdp) {
-        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        if (data.sdp.type === 'offer') {
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          socket.emit('signal', { targetId: from, data: { sdp: pc.localDescription } });
+socket.on('signal', async ({ from, data }) => {
+  let pc = peersRef.current.get(from);
+  if (!pc) {
+    pc = createPeerConnection(from);
+  }
+
+  try {
+    if (data.sdp) {
+      const desc = new RTCSessionDescription(data.sdp);
+
+      if (desc.type === 'offer') {
+        console.log('[webrtc] received OFFER from', from);
+        await pc.setRemoteDescription(desc);
+
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        socket.emit('signal', {
+          targetId: from,
+          data: { sdp: pc.localDescription },
+        });
+        console.log('[webrtc] sent ANSWER to', from);
+      } else if (desc.type === 'answer') {
+        console.log(
+          '[webrtc] received ANSWER from',
+          from,
+          'state =',
+          pc.signalingState,
+        );
+
+        // Only accept answer if we actually have a local offer pending
+        if (pc.signalingState !== 'have-local-offer') {
+          console.warn(
+            '[webrtc] unexpected ANSWER, ignoring. Current state =',
+            pc.signalingState,
+          );
+          return;
         }
-      } else if (data.candidate) {
-        try {
-          await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-        } catch (err) {
-          console.warn('ICE candidate error', err);
-        }
+
+        await pc.setRemoteDescription(desc);
+        console.log('[webrtc] ANSWER applied from', from);
       }
-    });
+    } else if (data.candidate) {
+      if (data.candidate) {
+        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+      }
+    }
+  } catch (err) {
+    console.error('[webrtc] error handling signal from', from, err);
+  }
+});
 
     return () => {
       peersRef.current.forEach((pc) => pc.close());
