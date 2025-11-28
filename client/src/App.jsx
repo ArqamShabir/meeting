@@ -21,10 +21,14 @@ const ICE_SERVERS = [
 const isDev = import.meta.env.DEV;
 const runtimeHost =
   typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const runtimeOrigin =
+  typeof window !== 'undefined'
+    ? `${window.location.protocol}//${window.location.host}`
+    : 'http://localhost:5173';
 const API_URL =
   (import.meta.env.VITE_API_URL &&
     import.meta.env.VITE_API_URL.replace(/\/$/, '')) ||
-  (isDev ? `http://${runtimeHost}:4000` : 'https://meeting.multishells.com');
+  (isDev ? `http://${runtimeHost}:4000` : runtimeOrigin.replace(/\/$/, ''));
 
 // ---------- UI Components ----------
 
