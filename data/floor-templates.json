@@ -1,0 +1,14 @@
+[
+  {
+    "id": "d6803863-d2c9-4583-8431-636afa2ef4f5",
+    "name": "Default Floor",
+    "backgroundImageUrl": "https://images.unsplash.com/photo-1529429617124-aee2f0757260?auto=format&fit=crop&w=1400&q=80",
+    "seats": []
+  },
+  {
+    "id": "0ee0f98a-8e61-41aa-a8cb-ce82a9561200",
+    "name": "Office",
+    "backgroundImageUrl": "http://localhost:4000/uploads/Cover.png",
+    "seats": []
+  }
+]
