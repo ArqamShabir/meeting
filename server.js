@@ -210,7 +210,15 @@ app.post('/api/upload-background', requireAdmin, (req, res) => {
     return res.status(500).json({ error: 'Could not save image' });
   }
   const url = `/uploads/${safeName}`;
-  res.status(201).json({ url });
+  // Return an absolute URL so production admins don't end up with localhost links
+  const protocol =
+    (req.headers['x-forwarded-proto'] && req.headers['x-forwarded-proto'].split(',')[0]) ||
+    req.protocol;
+  const host =
+    (req.headers['x-forwarded-host'] && req.headers['x-forwarded-host'].split(',')[0]) ||
+    req.get('host');
+  const absoluteUrl = `${protocol}://${host}${url}`;
+  res.status(201).json({ url: absoluteUrl });
 });
 
 // Rooms
