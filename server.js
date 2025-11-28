@@ -97,7 +97,9 @@ const io = new Server(server, {
 });
 
 app.use(cors({ origin: allowedOrigin }));
-app.use(express.json({ limit: '20mb' }));
+// Allow larger base64 image uploads (configurable via MAX_UPLOAD_MB env)
+const maxUploadMb = Number(process.env.MAX_UPLOAD_MB || 50);
+app.use(express.json({ limit: `${maxUploadMb}mb` }));
 app.use('/uploads', express.static(UPLOAD_DIR));
 
 // ---------- Helpers ----------
