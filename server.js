@@ -234,31 +234,28 @@ app.delete('/api/floor-templates/:id', requireAdmin, (req, res) => {
 });
 
 app.post('/api/upload-background', requireAdmin, upload.single('file'), (req, res) => {
-  // Preferred path: multipart/form-data upload
+  // multipart path
   if (req.file) {
     const url = `/uploads/${req.file.filename}`;
-    return res.status(201).json({ url: buildAbsoluteUrl(req, url) });
+    return res.status(201).json({ url });
   }
 
-  // Backward-compatible path: base64 JSON payload
+  // base64 path
   const { dataUrl, filename } = req.body || {};
   if (!dataUrl || !dataUrl.startsWith('data:image/')) {
     return res.status(400).json({ error: 'dataUrl (image) is required or upload a file' });
   }
+
   const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
   if (!match) return res.status(400).json({ error: 'Invalid dataUrl' });
   const [, mime, b64] = match;
   const ext = mime.split('/')[1] || 'png';
   const safeName = (filename || `bg-${Date.now()}.${ext}`).replace(/[^a-z0-9.-]/gi, '_');
   const filePath = path.join(UPLOAD_DIR, safeName);
-  try {
-    fs.writeFileSync(filePath, Buffer.from(b64, 'base64'));
-  } catch (err) {
-    console.error('Upload write error', err);
-    return res.status(500).json({ error: 'Could not save image' });
-  }
+  fs.writeFileSync(filePath, Buffer.from(b64, 'base64'));
+
   const url = `/uploads/${safeName}`;
-  res.status(201).json({ url: buildAbsoluteUrl(req, url) });
+  return res.status(201).json({ url });
 });
 
 // Rooms
