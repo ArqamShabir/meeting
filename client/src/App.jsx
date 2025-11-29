@@ -803,6 +803,7 @@ const handleCreateTemplate = async (e) => {
       .forEach((t) => (t.enabled = newValue));
   };
 
+  // no-op toggle kept for potential future use (mobile orientation tilt)
   const toggleTilt = () => setTiltView((prev) => !prev);
 
   // ---------- JSX ----------
@@ -1165,7 +1166,7 @@ const handleBackgroundUpload = async (file) => {
           <div className="room__body">
             <div className="room__main">
               <div
-                className={`room__canvas ${tiltView ? 'room__canvas--tilt' : ''}`}
+                className="room__canvas"
                 ref={canvasRef}
                 style={{
                   backgroundImage: `linear-gradient(
@@ -1234,13 +1235,6 @@ const handleBackgroundUpload = async (file) => {
                   onClick={centerOnSelf}
                 >
                   Center on me
-                </button>
-                <button
-                  type="button"
-                  className="toolbar-btn"
-                  onClick={toggleTilt}
-                >
-                  {tiltView ? 'Untilt view' : 'Tilt view'}
                 </button>
                 <button
                   type="button"

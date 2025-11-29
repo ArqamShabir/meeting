@@ -37,7 +37,7 @@ body {
     'Segoe UI', sans-serif;
   background: radial-gradient(circle at top, #1d2539 0, #050816 55%);
   color: var(--text-main);
-  overflow: hidden; /* prevent page scroll (desktop); loosen on mobile below */
+  overflow: hidden; /* prevent page scroll */
 }
 
 .app-shell {
@@ -493,11 +493,6 @@ select:focus {
   position: relative;
 }
 
-.room__canvas--tilt {
-  transform: perspective(1400px) rotateX(12deg) scale(1.02);
-  transform-origin: center center;
-}
-
 /* Video tiles */
 .tile {
   position: absolute;
@@ -766,37 +761,5 @@ select:focus {
   .tile {
     width: 120px;
     height: 120px;
-  }
-
-  /* Allow vertical scroll on mobile to view the full canvas */
-  body,
-  .app-shell {
-    overflow: auto;
-  }
-
-  .room {
-    min-height: 100vh;
-    height: auto;
-  }
-
-  .room__main {
-    overflow: visible;
-  }
-
-  .room__canvas {
-    min-height: 80vh;
-    overflow: auto;
-    touch-action: pan-x pan-y;
-  }
-
-  .room__toolbar {
-    gap: 8px;
-    padding: 12px;
-  }
-
-  .toolbar-btn {
-    flex: 1 1 calc(50% - 10px);
-    min-width: 0;
-    text-align: center;
   }
 }
