@@ -37,7 +37,7 @@ body {
     'Segoe UI', sans-serif;
   background: radial-gradient(circle at top, #1d2539 0, #050816 55%);
   color: var(--text-main);
-  overflow: hidden; /* prevent page scroll */
+  overflow: hidden; /* prevent page scroll (desktop); loosen on mobile below */
 }
 
 .app-shell {
@@ -493,6 +493,11 @@ select:focus {
   position: relative;
 }
 
+.room__canvas--tilt {
+  transform: perspective(1400px) rotateX(12deg) scale(1.02);
+  transform-origin: center center;
+}
+
 /* Video tiles */
 .tile {
   position: absolute;
@@ -605,27 +610,35 @@ select:focus {
 
 /* Toolbar */
 .room__toolbar {
-  padding: 9px 12px;
-  border-top: 1px solid var(--border-subtle);
+  position: sticky;
+  bottom: 0;
+  padding: 12px 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  background: rgba(15, 23, 42, 0.98);
+  gap: 12px;
+  background: linear-gradient(180deg, rgba(6, 9, 22, 0.9), rgba(6, 9, 22, 0.92));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.3);
+  flex-wrap: wrap;
 }
 
 .toolbar-btn {
-  font-size: 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.6);
-  padding: 6px 12px;
-  background: rgba(15, 23, 42, 0.9);
+  font-size: 13px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  padding: 10px 14px;
+  background: linear-gradient(145deg, rgba(17, 24, 39, 0.92), rgba(15, 23, 42, 0.82));
   color: #e5e7eb;
   cursor: pointer;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.32);
+  min-width: 120px;
 }
 
 .toolbar-btn:hover {
-  background: rgba(31, 41, 55, 0.9);
+  background: rgba(31, 41, 55, 0.94);
 }
 
 .toolbar-btn--muted {
@@ -753,5 +766,37 @@ select:focus {
   .tile {
     width: 120px;
     height: 120px;
+  }
+
+  /* Allow vertical scroll on mobile to view the full canvas */
+  body,
+  .app-shell {
+    overflow: auto;
+  }
+
+  .room {
+    min-height: 100vh;
+    height: auto;
+  }
+
+  .room__main {
+    overflow: visible;
+  }
+
+  .room__canvas {
+    min-height: 80vh;
+    overflow: auto;
+    touch-action: pan-x pan-y;
+  }
+
+  .room__toolbar {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .toolbar-btn {
+    flex: 1 1 calc(50% - 10px);
+    min-width: 0;
+    text-align: center;
   }
 }

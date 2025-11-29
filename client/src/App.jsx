@@ -803,7 +803,7 @@ const handleCreateTemplate = async (e) => {
       .forEach((t) => (t.enabled = newValue));
   };
 
-  const toggleTilt = () => {};
+  const toggleTilt = () => setTiltView((prev) => !prev);
 
   // ---------- JSX ----------
 
@@ -1165,17 +1165,16 @@ const handleBackgroundUpload = async (file) => {
           <div className="room__body">
             <div className="room__main">
               <div
-                  className="room__canvas"
-                  ref={canvasRef}
-                  style={{
-                    backgroundImage: `linear-gradient(
-                      to bottom right,
-                      rgba(10, 14, 22, 0.1),
-                      rgba(12, 18, 32, 0.1)
-                    ), url(${activeTemplate.backgroundImageUrl})`,
-                    transform: 'none',
-                  }}
-                  onDoubleClick={handleCanvasDoubleClick}
+                className={`room__canvas ${tiltView ? 'room__canvas--tilt' : ''}`}
+                ref={canvasRef}
+                style={{
+                  backgroundImage: `linear-gradient(
+                    to bottom right,
+                    rgba(10, 14, 22, 0.1),
+                    rgba(12, 18, 32, 0.1)
+                  ), url(${activeTemplate.backgroundImageUrl})`,
+                }}
+                onDoubleClick={handleCanvasDoubleClick}
                 onPointerDown={handleCanvasPointerDown}
                 onPointerMove={handleCanvasPointerMove}
                 onPointerUp={handleCanvasPointerUp}
@@ -1235,6 +1234,13 @@ const handleBackgroundUpload = async (file) => {
                   onClick={centerOnSelf}
                 >
                   Center on me
+                </button>
+                <button
+                  type="button"
+                  className="toolbar-btn"
+                  onClick={toggleTilt}
+                >
+                  {tiltView ? 'Untilt view' : 'Tilt view'}
                 </button>
                 <button
                   type="button"
