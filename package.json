@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node server.js",
     "server": "node server.js",
+    "migrate:uploads": "node scripts/rewrite-uploads-https.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,6 +16,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "multer": "^1.4.5-lts.1",
     "socket.io": "^4.8.1",
     "uuid": "^13.0.0"
   }

@@ -8,7 +8,7 @@
   {
     "id": "0ee0f98a-8e61-41aa-a8cb-ce82a9561200",
     "name": "Office",
-    "backgroundImageUrl": "http://localhost:4000/uploads/Cover.png",
+    "backgroundImageUrl": "https://meeting.multishells.com/uploads/Cover.png",
     "seats": []
   }
 ]

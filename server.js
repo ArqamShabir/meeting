@@ -8,6 +8,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
 
 const app = express();
@@ -27,6 +28,25 @@ if (!fs.existsSync(DATA_DIR)) {
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR);
 }
+const maxUploadMb = Number(process.env.MAX_UPLOAD_MB || 50);
+const maxUploadBytes = Math.max(1, Math.floor(maxUploadMb * 1024 * 1024));
+const uploadStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname || '').slice(0, 8) || '.bin';
+    const base =
+      path
+        .basename(file.originalname || 'upload', ext)
+        .replace(/[^a-z0-9._-]/gi, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '') || `upload-${Date.now()}`;
+    cb(null, `${base}-${Date.now()}${ext}`);
+  },
+});
+const upload = multer({
+  storage: uploadStorage,
+  limits: { fileSize: maxUploadBytes },
+});
 
 const hashCode = (code) =>
   crypto.createHash('sha256').update(code).digest('hex');
@@ -98,7 +118,6 @@ const io = new Server(server, {
 
 app.use(cors({ origin: allowedOrigin }));
 // Allow larger base64 image uploads (configurable via MAX_UPLOAD_MB env)
-const maxUploadMb = Number(process.env.MAX_UPLOAD_MB || 50);
 app.use(express.json({ limit: `${maxUploadMb}mb` }));
 app.use('/uploads', express.static(UPLOAD_DIR));
 
@@ -119,6 +138,16 @@ const compareHash = (incoming, target) => {
   const inBuf = Buffer.from(incoming);
   const targetBuf = Buffer.from(target);
   return inBuf.length === targetBuf.length && crypto.timingSafeEqual(inBuf, targetBuf);
+};
+
+const buildAbsoluteUrl = (req, relativePath) => {
+  const protocol =
+    (req.headers['x-forwarded-proto'] && req.headers['x-forwarded-proto'].split(',')[0]) ||
+    req.protocol;
+  const host =
+    (req.headers['x-forwarded-host'] && req.headers['x-forwarded-host'].split(',')[0]) ||
+    req.get('host');
+  return `${protocol}://${host}${relativePath}`;
 };
 
 // ---------- Auth ----------
@@ -192,10 +221,17 @@ app.delete('/api/floor-templates/:id', requireAdmin, (req, res) => {
   res.json(removed);
 });
 
-app.post('/api/upload-background', requireAdmin, (req, res) => {
-  const { dataUrl, filename } = req.body;
+app.post('/api/upload-background', requireAdmin, upload.single('file'), (req, res) => {
+  // Preferred path: multipart/form-data upload
+  if (req.file) {
+    const url = `/uploads/${req.file.filename}`;
+    return res.status(201).json({ url: buildAbsoluteUrl(req, url) });
+  }
+
+  // Backward-compatible path: base64 JSON payload
+  const { dataUrl, filename } = req.body || {};
   if (!dataUrl || !dataUrl.startsWith('data:image/')) {
-    return res.status(400).json({ error: 'dataUrl (image) is required' });
+    return res.status(400).json({ error: 'dataUrl (image) is required or upload a file' });
   }
   const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
   if (!match) return res.status(400).json({ error: 'Invalid dataUrl' });
@@ -210,15 +246,7 @@ app.post('/api/upload-background', requireAdmin, (req, res) => {
     return res.status(500).json({ error: 'Could not save image' });
   }
   const url = `/uploads/${safeName}`;
-  // Return an absolute URL so production admins don't end up with localhost links
-  const protocol =
-    (req.headers['x-forwarded-proto'] && req.headers['x-forwarded-proto'].split(',')[0]) ||
-    req.protocol;
-  const host =
-    (req.headers['x-forwarded-host'] && req.headers['x-forwarded-host'].split(',')[0]) ||
-    req.get('host');
-  const absoluteUrl = `${protocol}://${host}${url}`;
-  res.status(201).json({ url: absoluteUrl });
+  res.status(201).json({ url: buildAbsoluteUrl(req, url) });
 });
 
 // Rooms
