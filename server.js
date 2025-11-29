@@ -6,6 +6,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const fs = require('fs');
+const sharp = require('sharp');
 const path = require('path');
 const crypto = require('crypto');
 const multer = require('multer');
@@ -233,29 +234,60 @@ app.delete('/api/floor-templates/:id', requireAdmin, (req, res) => {
   res.json(removed);
 });
 
-app.post('/api/upload-background', requireAdmin, upload.single('file'), (req, res) => {
-  // multipart path
-  if (req.file) {
-    const url = `/uploads/${req.file.filename}`;
+app.post('/api/upload-background', requireAdmin, upload.single('file'), async (req, res) => {
+  try {
+    // Multipart path first
+    if (req.file) {
+      const inputPath = req.file.path;   // e.g. /var/www/meeting/server/data/uploads/Cover-....png
+      const ext = path.extname(req.file.filename).toLowerCase();
+
+      // Decide output format – here we’ll use JPEG to save space
+      const outputFilename = req.file.filename.replace(ext, '.jpg');
+      const outputPath = path.join(UPLOAD_DIR, outputFilename);
+
+      // Compress & resize (example: max 1920px width, keep aspect)
+      await sharp(inputPath)
+        .resize({ width: 1920, withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toFile(outputPath);
+
+      // Optional: delete original big file
+      fs.unlinkSync(inputPath);
+
+      const url = `/uploads/${outputFilename}`;
+      return res.status(201).json({ url });
+    }
+
+    // Fallback: base64 JSON payload (if you still use it anywhere)
+    const { dataUrl, filename } = req.body || {};
+    if (!dataUrl || !dataUrl.startsWith('data:image/')) {
+      return res.status(400).json({ error: 'dataUrl (image) is required or upload a file' });
+    }
+
+    const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+    if (!match) return res.status(400).json({ error: 'Invalid dataUrl' });
+    const [, , b64] = match;
+
+    const safeNameBase =
+      (filename || `bg-${Date.now()}`)
+        .replace(/[^a-z0-9.-]/gi, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_+|_+$/g, '') || `bg-${Date.now()}`;
+
+    const outputFilename = `${safeNameBase}.jpg`;
+    const outputPath = path.join(UPLOAD_DIR, outputFilename);
+
+    await sharp(Buffer.from(b64, 'base64'))
+      .resize({ width: 1920, withoutEnlargement: true })
+      .jpeg({ quality: 80 })
+      .toFile(outputPath);
+
+    const url = `/uploads/${outputFilename}`;
     return res.status(201).json({ url });
+  } catch (err) {
+    console.error('Upload/resize error', err);
+    return res.status(500).json({ error: 'Could not save image' });
   }
-
-  // base64 path
-  const { dataUrl, filename } = req.body || {};
-  if (!dataUrl || !dataUrl.startsWith('data:image/')) {
-    return res.status(400).json({ error: 'dataUrl (image) is required or upload a file' });
-  }
-
-  const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
-  if (!match) return res.status(400).json({ error: 'Invalid dataUrl' });
-  const [, mime, b64] = match;
-  const ext = mime.split('/')[1] || 'png';
-  const safeName = (filename || `bg-${Date.now()}.${ext}`).replace(/[^a-z0-9.-]/gi, '_');
-  const filePath = path.join(UPLOAD_DIR, safeName);
-  fs.writeFileSync(filePath, Buffer.from(b64, 'base64'));
-
-  const url = `/uploads/${safeName}`;
-  return res.status(201).json({ url });
 });
 
 // Rooms
