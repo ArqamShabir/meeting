@@ -141,14 +141,26 @@ const compareHash = (incoming, target) => {
 };
 
 const buildAbsoluteUrl = (req, relativePath) => {
-  const protocol =
-    (req.headers['x-forwarded-proto'] && req.headers['x-forwarded-proto'].split(',')[0]) ||
-    req.protocol;
-  const host =
-    (req.headers['x-forwarded-host'] && req.headers['x-forwarded-host'].split(',')[0]) ||
-    req.get('host');
+  // In production, always use https and optional PUBLIC_HOST
+  const isProd = process.env.NODE_ENV === 'production';
+
+  let protocol;
+  let host;
+
+  if (isProd) {
+    protocol = 'https';
+    host = process.env.PUBLIC_HOST || req.get('host'); // e.g. meeting.multishells.com
+  } else {
+    const protoHeader = req.headers['x-forwarded-proto'];
+    protocol = (protoHeader && protoHeader.split(',')[0]) || req.protocol || 'http';
+
+    const hostHeader = req.headers['x-forwarded-host'] || req.headers['host'];
+    host = (hostHeader && hostHeader.split(',')[0]) || req.get('host') || 'localhost:4000';
+  }
+
   return `${protocol}://${host}${relativePath}`;
 };
+
 
 // ---------- Auth ----------
 const authGuard = (req, res, next) => {
