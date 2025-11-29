@@ -371,33 +371,36 @@ function App() {
     }
   };
 
-  const handleCreateTemplate = async (e) => {
-    e.preventDefault();
-    if (!accessCode) {
-      const msg = 'Admin access code required to add templates';
-      setStatus(msg);
-      setModalMessage(msg);
-      return;
-    }
-    if (!creatingTemplate.name) return;
-    const payload = {
-      name: creatingTemplate.name,
-      // treat this as "floor style" (optional)
-      backgroundImageUrl:
-        uploadedBgUrl ||
-        creatingTemplate.backgroundImageUrl ||
-        'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1400&q=80',
-      seats: [],
-    };
-    try {
-      const res = await fetch(`${API_URL}/api/floor-templates`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-access-code': accessCode,
-        },
-        body: JSON.stringify(payload),
-      });
+const handleCreateTemplate = async (e) => {
+  e.preventDefault();
+  if (!accessCode) {
+    const msg = 'Admin access code required to add templates';
+    setStatus(msg);
+    setModalMessage(msg);
+    return;
+  }
+  if (!creatingTemplate.name) return;
+
+  const payload = {
+    name: creatingTemplate.name,
+    backgroundImageUrl:
+      uploadedBgUrl ||
+      creatingTemplate.backgroundImageUrl ||
+      'https://images.unsplash.com/photo-1505691938895-1758d7feb511?auto=format&fit=crop&w=1400&q=80',
+    seats: [],
+  };
+
+  console.log('[create template] payload:', payload);
+
+  try {
+    const res = await fetch(`${API_URL}/api/floor-templates`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-access-code': accessCode,
+      },
+      body: JSON.stringify(payload),
+    });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Unable to create template');
@@ -841,39 +844,48 @@ function App() {
       setModalMessage(err.message);
     }
   };
+const handleBackgroundUpload = async (file) => {
+  if (!file) return;
+  if (!accessCode) {
+    setModalMessage('You must be logged in as admin before uploading a floor image.');
+    return;
+  }
 
-  const handleBackgroundUpload = async (file) => {
-    if (!file) return;
-    setUploadingBg(true);
-    try {
-      const dataUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const res = await fetch(`${API_URL}/api/upload-background`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-access-code': accessCode,
-        },
-        body: JSON.stringify({ dataUrl, filename: file.name }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Upload failed');
-      }
-      const { url } = await res.json();
-      const absoluteUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
-      setUploadedBgUrl(absoluteUrl);
-      setStatus('Image uploaded');
-    } catch (err) {
-      setModalMessage(err.message);
-    } finally {
-      setUploadingBg(false);
+  setUploadingBg(true);
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch(`${API_URL}/api/upload-background`, {
+      method: 'POST',
+      headers: {
+        // IMPORTANT: do NOT set Content-Type here; browser will set multipart boundary
+        'x-access-code': accessCode,
+      },
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Upload failed');
     }
-  };
+
+    const { url } = await res.json();
+    console.log('[upload] server returned url:', url);
+
+    const absoluteUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
+    console.log('[upload] using absoluteUrl:', absoluteUrl);
+
+    setUploadedBgUrl(absoluteUrl);
+    setStatus('Image uploaded');
+  } catch (err) {
+    console.error('[upload] error:', err);
+    setModalMessage(err.message);
+  } finally {
+    setUploadingBg(false);
+  }
+};
+
 
   return (
     <div className="app-shell">
